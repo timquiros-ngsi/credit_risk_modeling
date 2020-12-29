@@ -60,7 +60,7 @@ def load_data():
 
 def main():
 
-    x_test, y_test = load_data()
+    # x_test, y_test = load_data()
 
     st.title("PSSLAI New Application Credit Scorecard")
     st.sidebar.title("Client Information Form")
@@ -116,8 +116,8 @@ def main():
         plot_precision_recall_curve(model, x_test, y_test)
         st.pyplot()
 
-    if st.sidebar.checkbox("Show raw data", False):
-        st.write(x_test)
+    # if st.sidebar.checkbox("Show raw data", False):
+    #     st.write(x_test)
 
 if __name__ == '__main__':
     main()
