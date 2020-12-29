@@ -47,9 +47,9 @@ def plot_roc_auc(y_test, y_pred_proba):
 
     fig = px.area(
         x=fpr, y=tpr,
-        title=f'ROC Curve (AUC={auc(fpr, tpr):.4f})',
+        title=f'Decision Tree ROC Curve (AUC={auc(fpr, tpr):.4f})',
         labels=dict(x='False Positive Rate', y='True Positive Rate'),
-        width=700, height=500
+        width=700, height=500, 
     )
     fig.add_shape(
         type='line', line=dict(dash='dash'),
@@ -129,10 +129,10 @@ def main():
         if prob_default <= 0.3:
             color = 'green'
             risk_level = 'LOW'
-        elif prob_default <= 0.5:
+        elif prob_default <= 0.6:
             color = 'yellow'
             risk_level = 'MODERATE'
-        elif prob_default <= 0.7:
+        elif prob_default <= 0.75:
             color = 'orange'
             risk_level = 'HIGH'
         else:
@@ -159,6 +159,8 @@ def main():
         y_pred_proba = model_predict(model, x_test)
         fig = plot_roc_auc(y_test, y_pred_proba)
         st.plotly_chart(fig)
+
+        st.write()
 
 
 
