@@ -8,12 +8,13 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from labels import labels_dict
+from load_css import local_css
 
-from sklearn.svm import SVC
+import plotly.express as px
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve, auc
+from sklearn.datasets import make_classification
+
 from sklearn.metrics import plot_confusion_matrix, plot_roc_curve, plot_precision_recall_curve
 from sklearn.metrics import precision_score, recall_score
 
@@ -41,26 +42,39 @@ def prepare_model_input(feats):
 def model_predict(model, X):
         return model.predict_proba(X)
 
-def plot_metrics(model, x_test, y_test):
-        
-    st.subheader('Precision-Recall Curve')
-    plot_precision_recall_curve(model, x_test, y_test)
-    st.pyplot()
+def plot_roc_auc(y_test, y_pred_proba):
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba[:, 1])
+
+    fig = px.area(
+        x=fpr, y=tpr,
+        title=f'ROC Curve (AUC={auc(fpr, tpr):.4f})',
+        labels=dict(x='False Positive Rate', y='True Positive Rate'),
+        width=700, height=500
+    )
+    fig.add_shape(
+        type='line', line=dict(dash='dash'),
+        x0=0, x1=1, y0=0, y1=1
+    )
+
+    fig.update_yaxes(scaleanchor="x", scaleratio=1)
+    fig.update_xaxes(constrain='domain')
+    return fig
 
 @st.cache(persist=True)
 def load_data():
     x_test = pd.read_csv(
-        os.path.join(os.getcwd(), 'datasets/x_test.csv')
+        os.path.join(os.getcwd(), 'datasets/x_test.csv'),
+        usecols=['loanptrate', 'loantype', 'me_lack_req', 'loanamt', 'me_svc_stat',
+       'grosspay1', 'pnpbillmode', 'outsloanamt']
     )
     y_test = pd.read_csv(
-        os.path.join(os.getcwd(), 'datasets/y_test.csv')
+        os.path.join(os.getcwd(), 'datasets/y_test.csv'),
+        usecols=['default']
     )
 
-    return x_test, y_test.iloc[:,1]
+    return x_test, y_test
 
 def main():
-
-    # x_test, y_test = load_data()
 
     st.title("PSSLAI New Application Credit Scorecard")
     st.sidebar.title("Client Information Form")
@@ -110,11 +124,48 @@ def main():
     if st.sidebar.button("Calculate Credit Score", key='credit_score_button'):
         output_text = "The clien'ts probabilty to default the loan is "
         prob_default = model_predict(model, X)[:,1][0]
-        st.write(output_text + '{:.2%}'.format(prob_default))
+
+        #Print out %default with CSS
+        if prob_default <= 0.3:
+            color = 'green'
+            risk_level = 'LOW'
+        elif prob_default <= 0.5:
+            color = 'yellow'
+            risk_level = 'MODERATE'
+        elif prob_default <= 0.7:
+            color = 'orange'
+            risk_level = 'HIGH'
+        else:
+            color = 'red'
+            risk_level = 'VERY HIGH'
+
+        local_css(os.path.join(os.getcwd(), "templates/fonts.css"))
+        t = """
+            <div>{}
+                <span class='highlight {}'><span class='bold'>{:.2%}</span></span></div>
+                </div>
+                and the risk of granting the loan is <span class='highlight {}'><span class='rbold'>{}</span></span>
+            </div>
+        """.format(
+            output_text,
+            color,
+            prob_default,
+            color,
+            risk_level
+        )
+        st.markdown(t, unsafe_allow_html=True)
+
+        x_test, y_test = load_data()
+        y_pred_proba = model_predict(model, x_test)
+        fig = plot_roc_auc(y_test, y_pred_proba)
+        st.plotly_chart(fig)
+
+
+
         # st.write(y_test)
-        st.subheader('Precision-Recall Curve')
-        plot_precision_recall_curve(model, x_test, y_test)
-        st.pyplot()
+        # st.subheader('Precision-Recall Curve')
+        # plot_precision_recall_curve(model, x_test, y_test)
+        # st.pyplot()
 
     # if st.sidebar.checkbox("Show raw data", False):
     #     st.write(x_test)
